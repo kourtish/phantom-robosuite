@@ -1,0 +1,53 @@
+<mujoco model="arx_r5_gripper">
+    <!-- Frame of this model = robot's right_hand body: +z is the approach axis, fingers slide along y.
+         Finger bodies are rotated back into the original link6 frame (quat below), so the URDF
+         poses/inertias/meshes can be used unchanged. -->
+    <asset>
+        <mesh name="r5_finger_left" file="meshes/arx_r5_gripper/link7.STL"/>
+        <mesh name="r5_finger_right" file="meshes/arx_r5_gripper/link8.STL"/>
+    </asset>
+    <actuator>
+        <!-- Position control per finger, in meters of travel (0 = closed, 0.044 = fully open).
+             With direct_gripper_control robosuite sends [a, -a] to these two actuators (robots/manipulator.py). -->
+        <position ctrllimited="true" ctrlrange="0.0 0.044" joint="finger_joint1" kp="1000" name="gripper_finger_joint1" forcelimited="true" forcerange="-20 20"/>
+        <position ctrllimited="true" ctrlrange="-0.044 0.0" joint="finger_joint2" kp="1000" name="gripper_finger_joint2" forcelimited="true" forcerange="-20 20"/>
+    </actuator>
+    <worldbody>
+        <body name="right_gripper" pos="0 0 0">
+            <site name="ft_frame" pos="0 0 0" size="0.01 0.01 0.01" rgba="1 0 0 1" type="sphere" group="1"/>
+            <inertial pos="0 0 0.05" mass="0.01" diaginertia="1e-5 1e-5 1e-5"/>
+            <!-- Fingertips end at z ~= 0.158 (link6 x = 0.0866 + finger length 0.071).
+                 Rotated +90 deg about z so that, like Robotiq85, the fingers open along the eef x axis
+                 (phantom builds the target orientation with x = thumb->index direction).
+                 The sign matters: with -90 deg the wrist roll (joint6, limit +-2 rad) needs ~+-pi on EPIC data
+                 and saturates; +90 deg is the same symmetric grasp but keeps joint6 near 0. -->
+            <body name="eef" pos="0 0 0.14" quat="0.7071068 0 0 0.7071068">
+                <site name="grip_site" pos="0 0 0" size="0.01 0.01 0.01" rgba="1 0 0 0.5" type="sphere" group="1"/>
+                <site name="ee_x" pos="0.1 0 0" size="0.005 .1" quat="0.707105 0 0.707108 0" rgba="1 0 0 0" type="cylinder" group="1"/>
+                <site name="ee_y" pos="0 0.1 0" size="0.005 .1" quat="0.707105 0.707108 0 0" rgba="0 1 0 0" type="cylinder" group="1"/>
+                <site name="ee_z" pos="0 0 0.1" size="0.005 .1" quat="1 0 0 0" rgba="0 0 1 0" type="cylinder" group="1"/>
+                <!-- This site was added for visualization. -->
+                <site name="grip_site_cylinder" pos="0 0 0" size="0.005 10" rgba="0 1 0 0.3" type="cylinder" group="1"/>
+            </body>
+            <!-- URDF link7: pos (0.08657, 0.024896, -0.0002436) in link6 frame -> (0.0002436, 0.024896, 0.08657) here -->
+            <body name="leftfinger" pos="0.0002436 0.024896 0.08657" quat="0.7071068 0 -0.7071068 0">
+                <inertial pos="-0.00035522 -0.007827 -0.0029883" quat="0.5 0.5 0.5 0.5" mass="0.064798" diaginertia="3e-05 3e-05 2e-05"/>
+                <joint name="finger_joint1" pos="0 0 0" axis="0 1 0" type="slide" limited="true" range="0.0 0.044" damping="100" armature="1.0" frictionloss="1.0"/>
+                <geom type="mesh" contype="0" conaffinity="0" group="1" mesh="r5_finger_left" name="finger1_visual" rgba="0.05 0.05 0.055 1"/>
+                <geom type="mesh" group="0" conaffinity="1" contype="0" solref="0.02 1" friction="1 0.005 0.0001" condim="4" mesh="r5_finger_left" name="finger1_collision"/>
+            </body>
+            <!-- URDF link8: pos (0.08657, -0.0249, -0.00024366); URDF axis (0 -1 0), range [0, 0.044]
+                 is rewritten as axis (0 1 0), range [-0.044, 0] (same motion) so the [a, -a] command works. -->
+            <body name="rightfinger" pos="0.00024366 -0.0249 0.08657" quat="0.7071068 0 -0.7071068 0">
+                <inertial pos="-0.000355223 0.00782769 0.00242006" quat="0.5 0.5 0.5 0.5" mass="0.0647982" diaginertia="3e-05 3e-05 2e-05"/>
+                <joint name="finger_joint2" pos="0 0 0" axis="0 1 0" type="slide" limited="true" range="-0.044 0.0" damping="100" armature="1.0" frictionloss="1.0"/>
+                <geom type="mesh" contype="0" conaffinity="0" group="1" mesh="r5_finger_right" name="finger2_visual" rgba="0.05 0.05 0.055 1"/>
+                <geom type="mesh" group="0" conaffinity="1" contype="0" solref="0.02 1" friction="1 0.005 0.0001" condim="4" mesh="r5_finger_right" name="finger2_collision"/>
+            </body>
+        </body>
+    </worldbody>
+    <sensor>
+        <force name="force_ee" site="ft_frame"/>
+        <torque name="torque_ee" site="ft_frame"/>
+    </sensor>
+</mujoco>

@@ -115,3 +115,7 @@ mjkey.txt
 
 # private macros
 macros_private.py
+
+# ARX R5 meshes are downloaded by robosuite/scripts/download_arx_r5_meshes.py
+robosuite/models/assets/robots/arx_r5/meshes/
+robosuite/models/assets/grippers/meshes/arx_r5_gripper/

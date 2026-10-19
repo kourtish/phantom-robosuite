@@ -11,7 +11,7 @@ from robosuite.environments.manipulation.two_arm_env import TwoArmEnv
 from robosuite.models.arenas import TableArena2, EmptyArena
 from robosuite.models.objects import BoxObject
 from robosuite.models.tasks import ManipulationTask
-from robosuite.utils.mjcf_utils import CustomMaterial
+from robosuite.utils.mjcf_utils import CustomMaterial, array_to_string
 from robosuite.utils.observables import Observable, sensor
 from robosuite.utils.placement_samplers import UniformRandomSampler
 from robosuite.utils.transform_utils import convert_quat
@@ -179,6 +179,7 @@ class PhantomBimanual(TwoArmEnv):
         camera_sensorsize=None,
         camera_principalpixel=None,
         camera_focalpixel=None,
+        robot_base_poses=None,
     ):
 
         self.bimanual_setup = bimanual_setup
@@ -204,6 +205,9 @@ class PhantomBimanual(TwoArmEnv):
         self.camera_sensorsize = camera_sensorsize
         self.camera_principalpixel = camera_principalpixel
         self.camera_focalpixel = camera_focalpixel
+        # Optional explicit world poses of the robot bases: list of (pos (3,), quat_wxyz (4,)), one per robot.
+        # Overrides the hardcoded placement of @bimanual_setup.
+        self.robot_base_poses = robot_base_poses
 
         self.robot_base_height = 2.0
         self.robot_base_offset = -0.5
@@ -246,7 +250,12 @@ class PhantomBimanual(TwoArmEnv):
         """
         super()._load_model()
 
-        if self.bimanual_setup == "tabletop":
+        if self.robot_base_poses is not None:
+            for robot, (pos, quat_wxyz) in zip(self.robots, self.robot_base_poses):
+                # set_base_xpos subtracts the mount bottom_offset, add it back so the robot base lands at @pos
+                robot.robot_model.set_base_xpos(np.array(pos) + robot.robot_model.bottom_offset)
+                robot.robot_model._elements["root_body"].set("quat", array_to_string(np.array(quat_wxyz)))
+        elif self.bimanual_setup == "tabletop":
             count = 0
             for robot, offset, rotation in zip(self.robots, (-0.2, 0.2), (0, 0)):
                 xpos = np.array((0, offset, self.robot_base_height))
